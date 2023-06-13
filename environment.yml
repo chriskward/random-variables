@@ -1,0 +1,6 @@
+name: randvar
+channels:
+  - defaults
+dependencies:
+  - python
+prefix: C:\Users\cward\anaconda3\envs\randvar
