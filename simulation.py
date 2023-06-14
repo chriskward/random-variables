@@ -144,3 +144,62 @@ class ContinuousRV():
         area = (dx*yarray) + (dx*dy*0.5)
 
         return np.sum(area)
+
+
+class DiscreteRV():
+
+    def __init__(self, f, support=[0,1,2,3]):
+
+        if not hasattr(support, '__iter__') : raise TypeError('Support must be an iterable type')
+        if not hasattr(f, '__call__') : raise TypeError("Probability Density Function must be of type 'function'")
+
+        # create arrays for the prob. mass function
+
+        self.pmf_x = np.array(support)
+
+        probs = []
+        for i in self.pmf_x:
+            probs.append(f(i))
+
+        self.pmf_y = np.array(probs)
+
+        # create arrays for the cumulative distribution function
+
+        self.cdf_x = self.pmf_x
+        self.cdf_y = np.cumsum(self.pmf_y)
+
+    def D(self,x):
+        if x in self.pmf_x: return self.pmf_y[ self.pmf_x == x ][0]
+        else: return 0
+
+    def F(self,x):
+        if x>=self.cdf_x.max() : x=self.cdf_x.max()
+        index = (self.cdf_x <= x).argmax()-1
+        return self.cdf_y[index]
+
+    def P(self,a,b):
+        if a<self.cdf_x.min() : a=self.cdf_x.min()
+        if b>self.cdf_x.max() : b=self.cdf_x.max()
+
+        upper_index = (self.cdf_x<= a).argmin()-1
+        lower_index = (self.cdf_x> b).argmax()-1
+
+        return self.cdf_y[upper_index] - self.cdf_y[lower_index]
+
+    def sample(self,n):
+
+        u = np.random.rand(n)
+        out = []
+
+        for i in u:
+            index = (self.cdf_y <= i).argmin()-1
+            out.append(self.cdf_x[index])
+
+        return np.array(out)
+
+
+
+
+
+
+
