@@ -1,10 +1,63 @@
 import numpy as np
 
 class ContinuousRV():
+    """
+    Z = ContinuousRV(f, a=0, b=1, res=0.001, epislon=0.001)
+
+    f: function/callable such that for y=f(x) , y must be a float or int for each a <= x <= b 
+
+    This class allows us to create a random variable Z by specifying a probability density
+    function f and support [a,b]. If the pdf does not integrate to one over its support, it will be automatically normalised.
+
+    The pdf is approximated by an optimal and minimal set of points (x_i, y_i). 
+    Points are chosen by solving an optimisation problem related to the integral of the 2nd derivative of f(x).
+    Areas of greater curvature are approximated by closer sets of points. For more details see github.com/chriskward.
+    
+    Once the class is instantiated, the function f is discarded. All probability calculations and the generation
+    of samples use this minimal set of points and a collection of interpolation routines.
+
+
+    """
+    
+
+
+
 
     def __init__(self, f, a=0, b=1, res=0.001, epsilon=0.001):
+        """
+        f: probability density function (pdf) accepting a single float:x and returning a float:y
 
-        # f must be callable (and capable of handling np.array input)
+        [a,b] int or float specifying the upper and lower bounds of the domain of f
+
+        res=0.001
+        epsilon=0.001
+
+        These parameters relate to the optimisation routine. The function f will first be sampled at
+        x = { a, a+1*res, a+2*res, ..... , b }  -->  f(x) = y = {y1, y2, y3, ..... yn}
+        
+        The 2nd derivative of the array y wrt. x is calcuated; d2y_x
+
+        Then the opimisation routine will determine an optimal and minimal set of points (x_i, y_i) by solving the optimisation:
+
+
+
+        maximise:       x_i+1 - x_i   (for all i)
+        
+        subject to:     integral_{d2y_i} ^ {d2y_i+1} < epsilon   (for all i)
+
+
+
+        
+        Sections of the pdf that are close to linear (where 2nd derivative is ~ zero) will be approximated only by two points.
+
+        Sections of the pdf that are curved will be approximated by more frequent sets of points along the curvature
+        and the distance between these points is inversly proportional to the rate of change of the gradient (the 2nd derivative).
+
+        Informally: Wiggly sections of the pdf will be approximated by more frequent points than straight sections. The wigglier the section, the more points
+        """
+
+
+
 
         if not hasattr(f, '__call__') : raise TypeError("Probability Density Function must be of type 'function'")
 
@@ -25,6 +78,11 @@ class ContinuousRV():
 
         self.pdf_x , self.pdf_y = self._rectify(f, self.a, self.b, self.res, self.epsilon)
 
+        #normalise to ensure pdf integrates to one
+
+        norm_constant = self._auc(self.pdf_x, self.pdf_y, self.a, self.b)
+        self.pdf_y *= 1/norm_constant
+
         # approximate the cumulative distribution function F(x) with
         # a series of optimally spaced points (x,y)
 
@@ -40,15 +98,37 @@ class ContinuousRV():
 
 
     def D(self,x):
+        """
+        .D(x) -> float
+
+        Returns the value y of the probability density function at f(x)
+        """
+
+
         return self._interpolate(self.pdf_x,self.pdf_y,x)
 
 
     def F(self,x):
+        """
+        .F(x) -> float
+
+        The cumulative distribution function. Returns the probability P(X<=x)
+        """
+
+
+
         if x>=self.b : x=self.b
         return self._interpolate(self.cdf_x,self.cdf_y,x)
 
 
     def P(self, a, b):
+        """
+        .P(a,b) -> float
+
+        returns the probability P(a<= X <= b)
+        """
+
+
         if a<=self.a : a=self.a
         if b>=self.b : b=self.b
         f_b = self._interpolate(self.cdf_x,self.cdf_y,b)
@@ -57,6 +137,13 @@ class ContinuousRV():
 
 
     def sample(self, n):
+        """
+        .sample( no_of_samples ) -> nd.array.shape(no_of_samples,)
+
+        samples from the random variable (by inversion)
+        """
+
+
         u = np.random.rand(n)
         out = []
 
@@ -197,6 +284,34 @@ class DiscreteRV():
 
         return np.array(out)
 
+
+
+def normal(mean=0,var=1,a=-10,b=10):
+    """
+    normal(mean = 0 , var = 1, a = -10 , b = 10) -> ContinuousRV
+
+
+    returns an instance of ContinuousRV with the normal distribution parameterised as specified
+    """
+
+    f = lambda x: ( np.sqrt(2*np.pi*var) )**-1 * np.exp( -1/(2*var) * (x-mean) **2 )
+
+    return ContinuousRV(f,a,b)
+
+
+
+def exponential(theta = 1,b=10):
+    """
+    exponential(theta = 1, b = 10) -> ContinuousRV
+
+
+    returns an instance of ContinuousRV with the exponential distribution parameterised as specified.
+    theta is the rate parameter (or inverse of the scale parameter)
+    """
+
+    f = lambda x: theta*np.exp(-theta*x)
+
+    return ContinuousRV(f,a=0,b)
 
 
 
