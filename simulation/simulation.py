@@ -32,31 +32,9 @@ class ContinuousRV():
         res=0.001
         epsilon=0.001
 
-        These parameters relate to the optimisation routine. The function f will first be sampled at
-        x = { a, a+1*res, a+2*res, ..... , b }  -->  f(x) = y = {y1, y2, y3, ..... yn}
-        
-        The 2nd derivative of the array y wrt. x is calcuated; d2y_x
-
-        Then the opimisation routine will determine an optimal and minimal set of points (x_i, y_i) by solving the optimisation:
-
-
-
-        maximise:       x_i+1 - x_i   (for all i)
-        
-        subject to:     integral_{d2y_i} ^ {d2y_i+1} < epsilon   (for all i)
-
-
-
-        
-        Sections of the pdf that are close to linear (where 2nd derivative is ~ zero) will be approximated only by two points.
-
-        Sections of the pdf that are curved will be approximated by more frequent sets of points along the curvature
-        and the distance between these points is inversly proportional to the rate of change of the gradient (the 2nd derivative).
-
-        Informally: Wiggly sections of the pdf will be approximated by more frequent points than straight sections. The wigglier the section, the more points
+        These parameters relate to the optimisation routine. Smaller values for greater accuracy
+        at greater computational cost
         """
-
-
 
 
         if not hasattr(f, '__call__') : raise TypeError("Probability Density Function must be of type 'function'")
@@ -244,11 +222,17 @@ class DiscreteRV():
 
         self.pmf_x = np.array(support)
 
+        # this should be adjusted to take dict input as
+        # well as a function. eg, it would be good to be
+        # able to specify a pdf by a dict {0:0.2, 1:0.6, 2:0.2}
+
         probs = []
         for i in self.pmf_x:
             probs.append(f(i))
 
         self.pmf_y = np.array(probs)
+        norm_constant = self.pmf_y.sum()
+        self.pmf_y *= 1/norm_constant
 
         # create arrays for the cumulative distribution function
 
@@ -261,7 +245,7 @@ class DiscreteRV():
 
     def F(self,x):
         if x>=self.cdf_x.max() : x=self.cdf_x.max()
-        index = (self.cdf_x <= x).argmax()-1
+        index = (self.cdf_x <= x).argmin()-1
         return self.cdf_y[index]
 
     def P(self,a,b):
@@ -311,7 +295,7 @@ def exponential(theta = 1,b=10):
 
     f = lambda x: theta*np.exp(-theta*x)
 
-    return ContinuousRV(f,a=0,b)
+    return ContinuousRV(f,a=0,b=b)
 
 
 
